@@ -16,9 +16,17 @@ linter:
 logs:
 	docker compose logs -f app
 
+test-e2e:
+	go test -v -tags=e2e ./tests/...
+
+load-test:
+	k6 run load_test.js
+
 down:
 	docker compose down
 
 clean:
 	docker compose down -v
 	rm -rf postgres_data
+
+test: linter test-e2e load-test

@@ -67,5 +67,26 @@ func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	json.Write(w, http.StatusCreated, response)
+}
 
+// DeactivateUsers handles mass deactivation of users.
+func (h *Handler) DeactivateUsers(w http.ResponseWriter, r *http.Request) {
+	var req DeactivateUsersRequest
+	if err := json.Read(r, &req); err != nil {
+		errors.WriteAppError(w, "invalid json", errors.ErrInvalidInput)
+		return
+	}
+
+	if len(req.Users) == 0 {
+		errors.WriteAppError(w, "users list is required", errors.ErrInvalidInput)
+		return
+	}
+
+	response, err := h.service.DeactivateUsers(r.Context(), req.Users)
+	if err != nil {
+		errors.WriteAppError(w, "failed to deactivate users", err)
+		return
+	}
+
+	json.Write(w, http.StatusOK, response)
 }

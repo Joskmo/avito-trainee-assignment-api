@@ -13,6 +13,7 @@ type Querier interface {
 	CheckReviewerAssignment(ctx context.Context, arg CheckReviewerAssignmentParams) (bool, error)
 	CreatePR(ctx context.Context, arg CreatePRParams) (PullRequest, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteReviewer(ctx context.Context, arg DeleteReviewerParams) error
 	GetActiveTeamMembersExcept(ctx context.Context, arg GetActiveTeamMembersExceptParams) ([]User, error)
 	GetPR(ctx context.Context, pullRequestID string) (PullRequest, error)
 	GetPRReviewers(ctx context.Context, prID string) ([]string, error)

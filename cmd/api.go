@@ -52,6 +52,7 @@ func (app *application) mount() http.Handler {
 	teamsHandler := teams.NewHandler(teamsService)
 	r.Get("/team/get", teamsHandler.GetTeamByName)
 	r.Post("/team/add", teamsHandler.CreateTeam)
+	r.Post("/team/deactivateUsers", teamsHandler.DeactivateUsers)
 
 	// for users
 	usersService := users.NewService(repo.New(app.db), app.db)

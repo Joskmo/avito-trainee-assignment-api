@@ -109,6 +109,21 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteReviewer = `-- name: DeleteReviewer :exec
+DELETE FROM pr_reviewer_assignment
+WHERE pr_id = $1 AND reviewer_id = $2 AND replaced_by IS NULL
+`
+
+type DeleteReviewerParams struct {
+	PrID       string `json:"pr_id"`
+	ReviewerID string `json:"reviewer_id"`
+}
+
+func (q *Queries) DeleteReviewer(ctx context.Context, arg DeleteReviewerParams) error {
+	_, err := q.db.Exec(ctx, deleteReviewer, arg.PrID, arg.ReviewerID)
+	return err
+}
+
 const getActiveTeamMembersExcept = `-- name: GetActiveTeamMembersExcept :many
 SELECT user_id, username, is_active, team_name FROM users
 WHERE team_name = $1 AND is_active = true AND user_id != $2

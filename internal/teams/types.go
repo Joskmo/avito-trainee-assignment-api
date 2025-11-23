@@ -4,6 +4,7 @@ package teams
 import (
 	"context"
 
+	"github.com/Joskmo/avito-trainee-assignment-api/internal/domain"
 	repo "github.com/Joskmo/avito-trainee-assignment-api/internal/storage/postgres/sqlc"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,6 +13,7 @@ import (
 type Service interface {
 	GetTeamByName(ctx context.Context, teamName string) ([]repo.User, error)
 	CreateTeam(ctx context.Context, tempTeam tempTeamParams) ([]repo.User, error)
+	DeactivateUsers(ctx context.Context, userIDs []string) (DeactivateUsersResponse, error)
 }
 
 // Handler handles HTTP requests for the teams service.
@@ -48,6 +50,16 @@ type tempUserParams struct {
 type tempTeamParams struct {
 	TeamName string           `json:"team_name"`
 	Members  []tempUserParams `json:"members"`
+}
+
+// DeactivateUsersRequest represents the request body for mass user deactivation.
+type DeactivateUsersRequest struct {
+	Users []string `json:"users"`
+}
+
+// DeactivateUsersResponse represents the response for mass user deactivation.
+type DeactivateUsersResponse struct {
+	UpdatedPRs []domain.PRWithReviewers `json:"updated_prs"`
 }
 
 // CreateTeamResponse represents the response for creating a team.
