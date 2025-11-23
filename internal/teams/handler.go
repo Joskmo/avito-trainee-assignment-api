@@ -1,3 +1,4 @@
+// Package teams provides handlers and service logic for managing teams.
 package teams
 
 import (
@@ -7,9 +8,8 @@ import (
 	"github.com/Joskmo/avito-trainee-assignment-api/internal/json"
 )
 
-
-
-func (h *handler) GetTeamByName(w http.ResponseWriter, r *http.Request) {
+// GetTeamByName handles the retrieval of a team by its name.
+func (h *Handler) GetTeamByName(w http.ResponseWriter, r *http.Request) {
 	teamName := r.URL.Query().Get("team_name")
 
 	users, err := h.service.GetTeamByName(r.Context(), teamName)
@@ -35,7 +35,8 @@ func (h *handler) GetTeamByName(w http.ResponseWriter, r *http.Request) {
 	json.Write(w, http.StatusOK, response)
 }
 
-func (h *handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
+// CreateTeam handles the creation of a new team.
+func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	var req tempTeamParams
 	if err := json.Read(r, &req); err != nil {
 		errors.WriteAppError(w, "invalid json in CreateTeam", errors.ErrInvalidInput)

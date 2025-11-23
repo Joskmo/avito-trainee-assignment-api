@@ -9,11 +9,19 @@ import (
 )
 
 type Querier interface {
-	AssignReviewer(ctx context.Context, arg AssignReviewerParams) (PrReviewerAssignment, error)
+	AssignReviewer(ctx context.Context, arg AssignReviewerParams) (string, error)
+	CheckReviewerAssignment(ctx context.Context, arg CheckReviewerAssignmentParams) (bool, error)
 	CreatePR(ctx context.Context, arg CreatePRParams) (PullRequest, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	GetActiveTeamMembersExcept(ctx context.Context, arg GetActiveTeamMembersExceptParams) ([]User, error)
+	GetPR(ctx context.Context, pullRequestID string) (PullRequest, error)
+	GetPRReviewers(ctx context.Context, prID string) ([]string, error)
+	GetPRsByReviewer(ctx context.Context, reviewerID string) ([]PullRequest, error)
 	GetTeam(ctx context.Context, teamName string) ([]User, error)
 	GetUser(ctx context.Context, userID string) (User, error)
+	MergePR(ctx context.Context, pullRequestID string) (PullRequest, error)
+	PRExists(ctx context.Context, pullRequestID string) (bool, error)
+	ReplaceReviewer(ctx context.Context, arg ReplaceReviewerParams) (PrReviewerAssignment, error)
 	SetUserActivity(ctx context.Context, arg SetUserActivityParams) (User, error)
 	TeamExists(ctx context.Context, teamName string) (bool, error)
 }

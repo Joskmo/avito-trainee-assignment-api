@@ -27,9 +27,9 @@ func (s *svc) CreateTeam(ctx context.Context, tempTeam tempTeamParams) ([]repo.U
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.InternalError
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := s.repo.WithTx(tx)
 

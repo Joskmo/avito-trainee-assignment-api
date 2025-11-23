@@ -1,17 +1,13 @@
+// Package env provides helper functions for reading environment variables.
 package env
 
 import (
-	"log/slog"
 	"os"
-
-	"github.com/joho/godotenv"
 )
 
+// GetString returns the value of the environment variable named by the key.
+// If the variable is not present, it returns the fallback value.
 func GetString(key string, fallback string) string {
-	if err := godotenv.Load(); err != nil {
-		slog.Warn("the .env file wasn't read -> using default data", "error", err)
-	}
-
 	if val := os.Getenv(key); val != "" {
 		return val
 	}

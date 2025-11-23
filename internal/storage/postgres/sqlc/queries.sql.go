@@ -7,12 +7,14 @@ package repo
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const assignReviewer = `-- name: AssignReviewer :one
 INSERT INTO pr_reviewer_assignment (pr_id, reviewer_id)
 VALUES ($1, $2)
-RETURNING assignment_id, pr_id, reviewer_id, assigned_at, replaced_by
+RETURNING reviewer_id
 `
 
 type AssignReviewerParams struct {
@@ -20,17 +22,30 @@ type AssignReviewerParams struct {
 	ReviewerID string `json:"reviewer_id"`
 }
 
-func (q *Queries) AssignReviewer(ctx context.Context, arg AssignReviewerParams) (PrReviewerAssignment, error) {
+func (q *Queries) AssignReviewer(ctx context.Context, arg AssignReviewerParams) (string, error) {
 	row := q.db.QueryRow(ctx, assignReviewer, arg.PrID, arg.ReviewerID)
-	var i PrReviewerAssignment
-	err := row.Scan(
-		&i.AssignmentID,
-		&i.PrID,
-		&i.ReviewerID,
-		&i.AssignedAt,
-		&i.ReplacedBy,
-	)
-	return i, err
+	var reviewer_id string
+	err := row.Scan(&reviewer_id)
+	return reviewer_id, err
+}
+
+const checkReviewerAssignment = `-- name: CheckReviewerAssignment :one
+SELECT EXISTS (
+  SELECT 1 FROM pr_reviewer_assignment 
+  WHERE pr_id = $1 AND reviewer_id = $2 AND replaced_by IS NULL
+)
+`
+
+type CheckReviewerAssignmentParams struct {
+	PrID       string `json:"pr_id"`
+	ReviewerID string `json:"reviewer_id"`
+}
+
+func (q *Queries) CheckReviewerAssignment(ctx context.Context, arg CheckReviewerAssignmentParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkReviewerAssignment, arg.PrID, arg.ReviewerID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const createPR = `-- name: CreatePR :one
@@ -94,6 +109,116 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getActiveTeamMembersExcept = `-- name: GetActiveTeamMembersExcept :many
+SELECT user_id, username, is_active, team_name FROM users
+WHERE team_name = $1 AND is_active = true AND user_id != $2
+`
+
+type GetActiveTeamMembersExceptParams struct {
+	TeamName string `json:"team_name"`
+	UserID   string `json:"user_id"`
+}
+
+func (q *Queries) GetActiveTeamMembersExcept(ctx context.Context, arg GetActiveTeamMembersExceptParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, getActiveTeamMembersExcept, arg.TeamName, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Username,
+			&i.IsActive,
+			&i.TeamName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPR = `-- name: GetPR :one
+SELECT pull_request_id, pull_request_name, author_id, status, merged_at FROM pull_requests
+WHERE pull_request_id = $1
+`
+
+func (q *Queries) GetPR(ctx context.Context, pullRequestID string) (PullRequest, error) {
+	row := q.db.QueryRow(ctx, getPR, pullRequestID)
+	var i PullRequest
+	err := row.Scan(
+		&i.PullRequestID,
+		&i.PullRequestName,
+		&i.AuthorID,
+		&i.Status,
+		&i.MergedAt,
+	)
+	return i, err
+}
+
+const getPRReviewers = `-- name: GetPRReviewers :many
+SELECT reviewer_id FROM pr_reviewer_assignment
+WHERE pr_id = $1 AND replaced_by IS NULL
+`
+
+func (q *Queries) GetPRReviewers(ctx context.Context, prID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getPRReviewers, prID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var reviewer_id string
+		if err := rows.Scan(&reviewer_id); err != nil {
+			return nil, err
+		}
+		items = append(items, reviewer_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPRsByReviewer = `-- name: GetPRsByReviewer :many
+SELECT DISTINCT pr.pull_request_id, pr.pull_request_name, pr.author_id, pr.status, pr.merged_at FROM pull_requests pr
+JOIN pr_reviewer_assignment pra ON pr.pull_request_id = pra.pr_id
+WHERE pra.reviewer_id = $1 AND pra.replaced_by IS NULL
+`
+
+func (q *Queries) GetPRsByReviewer(ctx context.Context, reviewerID string) ([]PullRequest, error) {
+	rows, err := q.db.Query(ctx, getPRsByReviewer, reviewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PullRequest
+	for rows.Next() {
+		var i PullRequest
+		if err := rows.Scan(
+			&i.PullRequestID,
+			&i.PullRequestName,
+			&i.AuthorID,
+			&i.Status,
+			&i.MergedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTeam = `-- name: GetTeam :many
 SELECT user_id, username, is_active, team_name FROM users
 WHERE team_name = $1
@@ -137,6 +262,65 @@ func (q *Queries) GetUser(ctx context.Context, userID string) (User, error) {
 		&i.Username,
 		&i.IsActive,
 		&i.TeamName,
+	)
+	return i, err
+}
+
+const mergePR = `-- name: MergePR :one
+UPDATE pull_requests
+SET status = 'MERGED', merged_at = COALESCE(merged_at, now())
+WHERE pull_request_id = $1
+RETURNING pull_request_id, pull_request_name, author_id, status, merged_at
+`
+
+func (q *Queries) MergePR(ctx context.Context, pullRequestID string) (PullRequest, error) {
+	row := q.db.QueryRow(ctx, mergePR, pullRequestID)
+	var i PullRequest
+	err := row.Scan(
+		&i.PullRequestID,
+		&i.PullRequestName,
+		&i.AuthorID,
+		&i.Status,
+		&i.MergedAt,
+	)
+	return i, err
+}
+
+const pRExists = `-- name: PRExists :one
+SELECT EXISTS (
+  SELECT 1 FROM pull_requests WHERE pull_request_id = $1
+)
+`
+
+func (q *Queries) PRExists(ctx context.Context, pullRequestID string) (bool, error) {
+	row := q.db.QueryRow(ctx, pRExists, pullRequestID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const replaceReviewer = `-- name: ReplaceReviewer :one
+UPDATE pr_reviewer_assignment
+SET replaced_by = $3
+WHERE pr_id = $1 AND reviewer_id = $2 AND replaced_by IS NULL
+RETURNING assignment_id, pr_id, reviewer_id, assigned_at, replaced_by
+`
+
+type ReplaceReviewerParams struct {
+	PrID       string      `json:"pr_id"`
+	ReviewerID string      `json:"reviewer_id"`
+	ReplacedBy pgtype.Text `json:"replaced_by"`
+}
+
+func (q *Queries) ReplaceReviewer(ctx context.Context, arg ReplaceReviewerParams) (PrReviewerAssignment, error) {
+	row := q.db.QueryRow(ctx, replaceReviewer, arg.PrID, arg.ReviewerID, arg.ReplacedBy)
+	var i PrReviewerAssignment
+	err := row.Scan(
+		&i.AssignmentID,
+		&i.PrID,
+		&i.ReviewerID,
+		&i.AssignedAt,
+		&i.ReplacedBy,
 	)
 	return i, err
 }

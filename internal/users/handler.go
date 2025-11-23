@@ -1,3 +1,4 @@
+// Package users provides handlers and service logic for managing users.
 package users
 
 import (
@@ -8,7 +9,8 @@ import (
 	repo "github.com/Joskmo/avito-trainee-assignment-api/internal/storage/postgres/sqlc"
 )
 
-func (h *handler) SetUserActivity(w http.ResponseWriter, r *http.Request) {
+// SetUserActivity handles the request to set the activity status of a user.
+func (h *Handler) SetUserActivity(w http.ResponseWriter, r *http.Request) {
 	var req SetUserActivityRequest
 	if err := json.Read(r, &req); err != nil {
 		errors.WriteAppError(w, "invalid json in SetUserActivity", errors.ErrInvalidInput)
