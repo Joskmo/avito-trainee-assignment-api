@@ -24,8 +24,8 @@ func main() {
 		addr: ":8080",
 		db: dbConfig{
 			dsn: env.GetString(
-				"GOOSE_DBSTRING",
-				"host=localhost user=trainee password=trainee_password dbname=trainee_db sslmode=disable",
+				"DATABASE_URL",
+				env.GetString("GOOSE_DBSTRING", "host=localhost user=trainee password=trainee_password dbname=trainee_db sslmode=disable"),
 			),
 		},
 	}

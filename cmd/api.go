@@ -1,3 +1,4 @@
+// Package main is the entry point of the application.
 package main
 
 import (
@@ -5,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Joskmo/avito-trainee-assignment-api/internal/pr"
 	repo "github.com/Joskmo/avito-trainee-assignment-api/internal/storage/postgres/sqlc"
 	"github.com/Joskmo/avito-trainee-assignment-api/internal/teams"
 	"github.com/Joskmo/avito-trainee-assignment-api/internal/users"
@@ -40,8 +42,8 @@ func (app *application) mount() http.Handler {
 
 	// handlers
 	// for healthcheck
-	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("pong"))
+	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("pong"))
 	})
 
 	// for teams
@@ -56,7 +58,12 @@ func (app *application) mount() http.Handler {
 	r.Post("/users/setIsActive", usersHandler.SetUserActivity)
 
 	// for PRs
-	
+	prService := pr.NewService(repo.New(app.db), app.db)
+	prHandler := pr.NewHandler(prService)
+	r.Post("/pullRequest/create", prHandler.CreatePR)
+	r.Post("/pullRequest/merge", prHandler.MergePR)
+	r.Post("/pullRequest/reassign", prHandler.ReassignReviewer)
+	r.Get("/users/getReview", prHandler.GetUserReviews)
 
 	return r
 }
