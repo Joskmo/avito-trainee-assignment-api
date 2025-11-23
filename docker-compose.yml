@@ -1,0 +1,42 @@
+name: avito-trainee-assignment-api/Joskmo
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: avito_trainee_postgres
+    environment:
+      POSTGRES_USER: trainee
+      POSTGRES_PASSWORD: trainee_password
+      POSTGRES_DB: trainee_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trainee -d trainee_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrations:
+    build: .
+    container_name: avito_trainee_migrations
+    command: sh -c "goose -dir migrations postgres 'postgres://trainee:trainee_password@db:5432/trainee_db?sslmode=disable' up"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build: .
+    container_name: avito_trainee_app
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://trainee:trainee_password@db:5432/trainee_db?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
