@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Joskmo/avito-trainee-assignment-api/internal/pr"
+	"github.com/Joskmo/avito-trainee-assignment-api/internal/stats"
 	repo "github.com/Joskmo/avito-trainee-assignment-api/internal/storage/postgres/sqlc"
 	"github.com/Joskmo/avito-trainee-assignment-api/internal/teams"
 	"github.com/Joskmo/avito-trainee-assignment-api/internal/users"
@@ -63,7 +64,12 @@ func (app *application) mount() http.Handler {
 	r.Post("/pullRequest/create", prHandler.CreatePR)
 	r.Post("/pullRequest/merge", prHandler.MergePR)
 	r.Post("/pullRequest/reassign", prHandler.ReassignReviewer)
-	r.Get("/users/getReview", prHandler.GetUserReviews)
+	r.Get("/pullRequest/userReviews", prHandler.GetUserReviews)
+
+	// for stats
+	statsService := stats.NewService(repo.New(app.db), app.db)
+	statsHandler := stats.NewHandler(statsService)
+	r.Get("/stats", statsHandler.GetStats)
 
 	return r
 }

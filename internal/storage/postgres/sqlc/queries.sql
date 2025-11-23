@@ -77,3 +77,19 @@ RETURNING *;
 SELECT DISTINCT pr.* FROM pull_requests pr
 JOIN pr_reviewer_assignment pra ON pr.pull_request_id = pra.pr_id
 WHERE pra.reviewer_id = $1 AND pra.replaced_by IS NULL;
+
+-- name: GetReviewerStats :many
+SELECT reviewer_id, COUNT(*) as assignment_count
+FROM pr_reviewer_assignment
+WHERE replaced_by IS NULL
+GROUP BY reviewer_id
+ORDER BY assignment_count DESC
+LIMIT 10;
+
+-- name: GetPRStatusStats :many
+SELECT status, COUNT(*) as count
+FROM pull_requests
+GROUP BY status;
+
+-- name: GetTotalActiveUsers :one
+SELECT COUNT(*) FROM users WHERE is_active = true;
