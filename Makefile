@@ -10,6 +10,9 @@ run: build
 migrate:
 	docker compose run --rm migrations
 
+linter:
+	golangci-lint run
+
 logs:
 	docker compose logs -f app
 

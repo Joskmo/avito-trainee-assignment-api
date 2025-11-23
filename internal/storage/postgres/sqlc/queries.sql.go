@@ -187,6 +187,37 @@ func (q *Queries) GetPRReviewers(ctx context.Context, prID string) ([]string, er
 	return items, nil
 }
 
+const getPRStatusStats = `-- name: GetPRStatusStats :many
+SELECT status, COUNT(*) as count
+FROM pull_requests
+GROUP BY status
+`
+
+type GetPRStatusStatsRow struct {
+	Status NullPrStatusEnum `json:"status"`
+	Count  int64            `json:"count"`
+}
+
+func (q *Queries) GetPRStatusStats(ctx context.Context) ([]GetPRStatusStatsRow, error) {
+	rows, err := q.db.Query(ctx, getPRStatusStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPRStatusStatsRow
+	for rows.Next() {
+		var i GetPRStatusStatsRow
+		if err := rows.Scan(&i.Status, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPRsByReviewer = `-- name: GetPRsByReviewer :many
 SELECT DISTINCT pr.pull_request_id, pr.pull_request_name, pr.author_id, pr.status, pr.merged_at FROM pull_requests pr
 JOIN pr_reviewer_assignment pra ON pr.pull_request_id = pra.pr_id
@@ -209,6 +240,40 @@ func (q *Queries) GetPRsByReviewer(ctx context.Context, reviewerID string) ([]Pu
 			&i.Status,
 			&i.MergedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getReviewerStats = `-- name: GetReviewerStats :many
+SELECT reviewer_id, COUNT(*) as assignment_count
+FROM pr_reviewer_assignment
+WHERE replaced_by IS NULL
+GROUP BY reviewer_id
+ORDER BY assignment_count DESC
+LIMIT 10
+`
+
+type GetReviewerStatsRow struct {
+	ReviewerID      string `json:"reviewer_id"`
+	AssignmentCount int64  `json:"assignment_count"`
+}
+
+func (q *Queries) GetReviewerStats(ctx context.Context) ([]GetReviewerStatsRow, error) {
+	rows, err := q.db.Query(ctx, getReviewerStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetReviewerStatsRow
+	for rows.Next() {
+		var i GetReviewerStatsRow
+		if err := rows.Scan(&i.ReviewerID, &i.AssignmentCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -247,6 +312,17 @@ func (q *Queries) GetTeam(ctx context.Context, teamName string) ([]User, error) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTotalActiveUsers = `-- name: GetTotalActiveUsers :one
+SELECT COUNT(*) FROM users WHERE is_active = true
+`
+
+func (q *Queries) GetTotalActiveUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalActiveUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getUser = `-- name: GetUser :one
