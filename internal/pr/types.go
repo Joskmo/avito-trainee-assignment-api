@@ -4,6 +4,7 @@ package pr
 import (
 	"context"
 
+	"github.com/Joskmo/avito-trainee-assignment-api/internal/domain"
 	repo "github.com/Joskmo/avito-trainee-assignment-api/internal/storage/postgres/sqlc"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -42,13 +43,7 @@ func NewService(repo *repo.Queries, db *pgxpool.Pool) Service {
 }
 
 // WithReviewers represents a PR with its assigned reviewers.
-type WithReviewers struct {
-	PullRequestID     string   `json:"pull_request_id"`
-	PullRequestName   string   `json:"pull_request_name"`
-	AuthorID          string   `json:"author_id"`
-	Status            string   `json:"status"`
-	AssignedReviewers []string `json:"assigned_reviewers"`
-}
+type WithReviewers = domain.PRWithReviewers
 
 // CreatePRResponse represents the response for creating a PR.
 type CreatePRResponse struct {

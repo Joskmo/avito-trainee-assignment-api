@@ -93,3 +93,7 @@ GROUP BY status;
 
 -- name: GetTotalActiveUsers :one
 SELECT COUNT(*) FROM users WHERE is_active = true;
+
+-- name: DeleteReviewer :exec
+DELETE FROM pr_reviewer_assignment
+WHERE pr_id = $1 AND reviewer_id = $2 AND replaced_by IS NULL;
